@@ -1,0 +1,44 @@
+name: action-k8s-pull-secret
+description: Create/update a Kubernetes pull-secret
+inputs:
+  username:
+    required: true
+    description: registry username
+  password:
+    required: true
+    description: registry password
+  hostname:
+    required: true
+    description: registry hostname, (registry.example.org)
+  namespace:
+    required: true
+    description: Kubernetes namespace
+  name:
+    required: true
+    description: Secret name
+runs:
+  using: composite
+  steps:
+    - name: upsert pull secret
+      shell: bash
+      env:
+        SECRET_NAME: ${{ inputs.name }}
+        NAMESPACE: ${{ inputs.namespace }}
+        REGISTRY_HOSTNAME: ${{ inputs.hostname }}
+        REGISTRY_USERNAME: ${{ inputs.username }}
+        REGISTRY_PASSWORD: ${{ inputs.password }}
+      run: |
+        kubectl create secret docker-registry ${SECRET_NAME} \
+          --namespace=${NAMESPACE} \
+          --docker-server=${REGISTRY_HOSTNAME} \
+          --docker-username=${REGISTRY_USERNAME} \
+          --docker-password=${REGISTRY_PASSWORD} \
+          --dry-run=client -o yaml | kubectl apply --namespace=${NAMESPACE} -f -
+    - shell: bash
+      env:
+        SECRET_NAME: ${{ inputs.name }}
+        NAMESPACE: ${{ inputs.namespace }}
+      run: |
+        echo "Create/Updated secret: ${NAMESPACE}/${SECRET_NAME} ✅" >> $GITHUB_STEP_SUMMARY
+
+
